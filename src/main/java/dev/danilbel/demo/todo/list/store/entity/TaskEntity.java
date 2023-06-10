@@ -11,6 +11,7 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
@@ -39,6 +40,7 @@ public class TaskEntity {
     Boolean isDone = false;
 
     @ManyToOne
+    @JoinColumn(name = "todo_list_id")
     ToDoListEntity toDoList;
 
     @OneToOne
