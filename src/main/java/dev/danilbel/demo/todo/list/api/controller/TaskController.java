@@ -77,7 +77,7 @@ public class TaskController {
                 .filter(description -> !description.trim().isEmpty());
 
         if (taskTitle.trim().isEmpty()) {
-            throw new NotFoundException("Task title can't be empty.");
+            throw new BadRequestException("Task title can't be empty.");
         }
 
         ToDoListEntity toDoList = controllerHelper.getToDoListOrThrowException(toDoListId);
