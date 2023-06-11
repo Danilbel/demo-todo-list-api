@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.transaction.Transactional;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -34,6 +35,7 @@ public class TaskController {
     public static final String FETCH_TASKS = API_FETCH_AND_CREATE_PREFIX;
     public static final String CREATE_TASK = API_FETCH_AND_CREATE_PREFIX;
     public static final String UPDATE_TASK = API_PREFIX + "/{task_id}";
+    public static final String CHANGE_TASK_POSITION = API_PREFIX + "/{task_id}/position/change";
 
     TaskRepository taskRepository;
 
@@ -167,5 +169,112 @@ public class TaskController {
         return taskDtoFactory.makeTaskDto(savedTask);
     }
 
+    @PatchMapping(CHANGE_TASK_POSITION)
+    public TaskDto changeTaskPosition(
+            @PathVariable("task_id") Long taskId,
+            @RequestParam(value = "new_previous_task_id", required = false) Optional<Long> optionalNewPreviousTaskId) {
 
+        final TaskEntity task = controllerHelper.getTaskOrThrowException(taskId);
+
+        Optional<Long> optionalOldPreviousTaskId = task.getPreviousTask()
+                .map(TaskEntity::getId);
+
+        if (optionalNewPreviousTaskId.equals(optionalOldPreviousTaskId)) {
+            return taskDtoFactory.makeTaskDto(task);
+        }
+
+        Optional<TaskEntity> optionalNewPreviousTask =
+                getOptionalNewPreviousTaskOrThrowException(task, optionalNewPreviousTaskId);
+
+        Optional<TaskEntity> optionalNewNextTask = optionalNewPreviousTask
+                .map(TaskEntity::getNextTask)
+                .orElseGet(() -> task
+                        .getToDoList()
+                        .getTasks()
+                        .stream()
+                        .filter(anotherTask -> anotherTask.getPreviousTask().isEmpty())
+                        .findFirst()
+                );
+
+        replaceOldTaskPosition(task);
+
+        TaskEntity savedTask = replaceNewTaskPosition(task, optionalNewPreviousTask, optionalNewNextTask);
+
+        return taskDtoFactory.makeTaskDto(savedTask);
+    }
+
+    private Optional<TaskEntity> getOptionalNewPreviousTaskOrThrowException(
+            TaskEntity task, Optional<Long> optionalNewPreviousTaskId) {
+
+        ToDoListEntity toDoList = task.getToDoList();
+
+        return optionalNewPreviousTaskId
+                .map(newPreviousTaskId -> {
+
+                    if (newPreviousTaskId.equals(task.getId())) {
+                        throw new BadRequestException(
+                                String.format("Task with id \"%s\" can't be previous task for itself.", task.getId())
+                        );
+                    }
+
+                    TaskEntity newPreviousTask = controllerHelper.getTaskOrThrowException(newPreviousTaskId);
+                    if (!Objects.equals(newPreviousTask.getToDoList().getId(), toDoList.getId())) {
+                        throw new BadRequestException(
+                                String.format(
+                                        "Task with id \"%s\" and task with id \"%s\" are not in the same to do list.",
+                                        task.getId(),
+                                        newPreviousTaskId
+                                )
+                        );
+                    }
+
+                    return newPreviousTask;
+                });
+    }
+
+    private void replaceOldTaskPosition(TaskEntity task) {
+        Optional<TaskEntity> optionalOldPreviousTask = task.getPreviousTask();
+        Optional<TaskEntity> optionalOldNextTask = task.getNextTask();
+
+        optionalOldPreviousTask
+                .ifPresent(oldPreviousTask -> {
+                    oldPreviousTask.setNextTask(optionalOldNextTask.orElse(null));
+
+                    taskRepository.saveAndFlush(oldPreviousTask);
+                });
+
+        optionalOldNextTask
+                .ifPresent(oldNextTask -> {
+                    oldNextTask.setPreviousTask(optionalOldPreviousTask.orElse(null));
+
+                    taskRepository.saveAndFlush(oldNextTask);
+                });
+    }
+
+    private TaskEntity replaceNewTaskPosition(
+            TaskEntity task,
+            Optional<TaskEntity> optionalNewPreviousTask,
+            Optional<TaskEntity> optionalNewNextTask) {
+
+        if (optionalNewPreviousTask.isPresent()) {
+            TaskEntity newPreviousTask = optionalNewPreviousTask.get();
+            newPreviousTask.setNextTask(task);
+            task.setPreviousTask(newPreviousTask);
+        } else {
+            task.setPreviousTask(null);
+        }
+
+        if (optionalNewNextTask.isPresent()) {
+            TaskEntity newNextTask = optionalNewNextTask.get();
+            newNextTask.setPreviousTask(task);
+            task.setNextTask(newNextTask);
+        } else {
+            task.setNextTask(null);
+        }
+
+        optionalNewPreviousTask.ifPresent(taskRepository::saveAndFlush);
+        optionalNewNextTask.ifPresent(taskRepository::saveAndFlush);
+
+        return taskRepository.saveAndFlush(task);
+    }
 }
