@@ -1,0 +1,18 @@
+version: '3.1'
+services:
+  app:
+    container_name: demo-todo-list
+    image: demo-todo-list
+    build: ./
+    ports:
+      - "9120:9120"
+    depends_on:
+      - postgresql
+  postgresql:
+    image: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=demo_todo_list
