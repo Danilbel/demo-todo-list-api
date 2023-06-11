@@ -1,6 +1,7 @@
 package dev.danilbel.demo.todo.list.api.controller;
 
 import dev.danilbel.demo.todo.list.api.controller.helper.ControllerHelper;
+import dev.danilbel.demo.todo.list.api.dto.AskDto;
 import dev.danilbel.demo.todo.list.api.dto.TaskDto;
 import dev.danilbel.demo.todo.list.api.exception.BadRequestException;
 import dev.danilbel.demo.todo.list.api.exception.NotFoundException;
@@ -10,6 +11,7 @@ import dev.danilbel.demo.todo.list.store.entity.ToDoListEntity;
 import dev.danilbel.demo.todo.list.store.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,6 +38,7 @@ public class TaskController {
     public static final String CREATE_TASK = API_FETCH_AND_CREATE_PREFIX;
     public static final String UPDATE_TASK = API_PREFIX + "/{task_id}";
     public static final String CHANGE_TASK_POSITION = API_PREFIX + "/{task_id}/position/change";
+    public static final String DELETE_TASK = API_PREFIX + "/{task_id}";
 
     TaskRepository taskRepository;
 
@@ -201,6 +204,18 @@ public class TaskController {
         TaskEntity savedTask = replaceNewTaskPosition(task, optionalNewPreviousTask, optionalNewNextTask);
 
         return taskDtoFactory.makeTaskDto(savedTask);
+    }
+
+    @DeleteMapping(DELETE_TASK)
+    public AskDto deleteTask(@PathVariable("task_id") Long taskId) {
+
+        TaskEntity task = controllerHelper.getTaskOrThrowException(taskId);
+
+        replaceOldTaskPosition(task);
+
+        taskRepository.delete(task);
+
+        return new AskDto(true);
     }
 
     private Optional<TaskEntity> getOptionalNewPreviousTaskOrThrowException(
