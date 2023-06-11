@@ -11,12 +11,14 @@ import dev.danilbel.demo.todo.list.store.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.transaction.Transactional;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -27,9 +29,11 @@ import java.util.stream.Collectors;
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE, makeFinal = true)
 public class TaskController {
 
+    public static final String API_PREFIX = "/api/v1/tasks";
     public static final String API_FETCH_AND_CREATE_PREFIX = ToDoListController.API_PREFIX + "/{todo_list_id}/tasks";
     public static final String FETCH_TASKS = API_FETCH_AND_CREATE_PREFIX;
     public static final String CREATE_TASK = API_FETCH_AND_CREATE_PREFIX;
+    public static final String UPDATE_TASK = API_PREFIX + "/{task_id}";
 
     TaskRepository taskRepository;
 
@@ -109,4 +113,59 @@ public class TaskController {
 
         return taskDtoFactory.makeTaskDto(savedTask);
     }
+
+    @PatchMapping(UPDATE_TASK)
+    public TaskDto updateTask(
+            @PathVariable("task_id") Long taskId,
+            @RequestParam(value = "task_title", required = false) Optional<String> optionalTaskTitle,
+            @RequestParam(value = "task_description", required = false) Optional<String> optionalTaskDescription,
+            @RequestParam(value = "task_is_done", required = false) Optional<Boolean> optionalTaskIsDone) {
+
+        if (optionalTaskTitle.isEmpty() && optionalTaskDescription.isEmpty() && optionalTaskIsDone.isEmpty()) {
+            throw new BadRequestException("Task title, description and is done can't be empty at the same time.");
+        }
+
+        TaskEntity task = controllerHelper.getTaskOrThrowException(taskId);
+
+        optionalTaskTitle
+                .ifPresent(
+                        taskTitle -> {
+
+                            if (taskTitle.trim().isEmpty()) {
+                                throw new BadRequestException("Task title can't be empty.");
+                            }
+
+                            taskRepository
+                                    .findTaskEntityByToDoListIdAndTitleContainsIgnoreCase(
+                                            task.getToDoList().getId(),
+                                            taskTitle
+                                    )
+                                    .ifPresent(anotherTask -> {
+                                        if (!anotherTask.getId().equals(task.getId())) {
+                                            throw new BadRequestException(
+                                                    String.format("Task with title \"%s\" already exists.", taskTitle)
+                                            );
+                                        }
+                                    });
+
+                            task.setTitle(taskTitle);
+                        }
+                );
+
+        optionalTaskDescription
+                .ifPresent(taskDescription -> task.setDescription(
+                        taskDescription.trim().isBlank() ? null : taskDescription.trim())
+                );
+
+        optionalTaskIsDone
+                .ifPresent(task::setIsDone);
+
+        task.setUpdatedAt(Instant.now());
+
+        TaskEntity savedTask = taskRepository.saveAndFlush(task);
+
+        return taskDtoFactory.makeTaskDto(savedTask);
+    }
+
+
 }
