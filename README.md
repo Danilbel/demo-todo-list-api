@@ -377,6 +377,11 @@ git clone https://github.com/Danilbel/demo-todo-list-api.git
 cd demo-todo-list-api
 ```
 
+- Make the gradlew file executable
+```bash
+  chmod +x gradlew
+  ```
+
 - Build the project
 ```bash
 ./gradlew build
