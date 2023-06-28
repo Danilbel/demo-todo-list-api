@@ -4,13 +4,13 @@ import dev.danilbel.demo.todo.list.api.controller.helper.ControllerHelper;
 import dev.danilbel.demo.todo.list.api.dto.AskDto;
 import dev.danilbel.demo.todo.list.api.dto.TaskDto;
 import dev.danilbel.demo.todo.list.api.exception.BadRequestException;
-import dev.danilbel.demo.todo.list.api.exception.NotFoundException;
 import dev.danilbel.demo.todo.list.api.factory.TaskDtoFactory;
 import dev.danilbel.demo.todo.list.store.entity.TaskEntity;
 import dev.danilbel.demo.todo.list.store.entity.ToDoListEntity;
 import dev.danilbel.demo.todo.list.store.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 @Transactional
 @RequiredArgsConstructor
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE, makeFinal = true)
+@CrossOrigin(origins = "*")
 public class TaskController {
 
     public static final String API_PREFIX = "/api/v1/tasks";

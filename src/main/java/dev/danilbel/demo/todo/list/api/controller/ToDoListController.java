@@ -9,6 +9,7 @@ import dev.danilbel.demo.todo.list.store.entity.ToDoListEntity;
 import dev.danilbel.demo.todo.list.store.repository.ToDoListRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,6 +29,7 @@ import java.util.stream.Stream;
 @Transactional
 @RequiredArgsConstructor
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE, makeFinal = true)
+@CrossOrigin(origins = "*")
 public class ToDoListController {
 
     public static final String API_PREFIX = "/api/v1/todo-lists";
